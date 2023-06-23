@@ -1,10 +1,7 @@
 # vehicle-cloud-inference
-Part of the ACDC Research Project
+Part of the ACDC Research Project 
 
-
-## MQTT Inference method
-
-WRITE DOCUMENTATION HERE
+This branch is mainly for TF-Serving related progress
 
 ## TF-Serving Inference method
 
