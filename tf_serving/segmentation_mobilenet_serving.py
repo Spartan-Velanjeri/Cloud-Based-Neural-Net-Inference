@@ -116,7 +116,7 @@ def predict_rest(json_data, url):
     prediction = tf.squeeze(predictions).numpy()
     argmax_prediction = np.argmax(prediction, axis=2)
     prediction = segmentation_map_to_rgb(argmax_prediction,color_palette=color_palette).astype(np.uint8)
-    prediction = cv2.cvtColor(prediction,cv2.COLOR_BGR2RGB)
+    #prediction = cv2.cvtColor(prediction,cv2.COLOR_BGR2RGB)
 
     return prediction
 
