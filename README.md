@@ -37,3 +37,7 @@ check out the links below
 Once set up,
 
 `docker pull tensorflow/serving:latest-gpu` 
+
+Models used:
+1. best_weights_e_00231_val_loss_0.1518.zip
+2. mobilenetv3_large_os8_deeplabv3plus_72miou.zip
