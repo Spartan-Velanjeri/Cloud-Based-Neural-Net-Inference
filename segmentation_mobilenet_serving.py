@@ -115,7 +115,8 @@ data = json.dumps(
 '''
 CHECK README
 '''
-url = "http://localhost:8501/v1/models/mobilenet:predict"
+url = "http://localhost:8501/v1/models/mobilenet:predict" #If tfserving on your local system
+#url = "http://i2200049.ika.rwth-aachen.de:8501/v1/models/mobilenet:predict" # If tfserving on the IKA Workstation
 
 
 
