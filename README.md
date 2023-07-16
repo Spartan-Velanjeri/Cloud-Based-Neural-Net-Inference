@@ -9,12 +9,12 @@ In order to run the tf-serving
 
 First let's run the Tensorflow Serving Docker Container (CPU) by running
 
-`docker run -p 8501:8501 --mount type=bind,source=/home/typlosion/work/ACDC/vehicle-cloud-inference/tf_serving/model/1/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving`
+`docker run -p 8501:8501 --mount type=bind,source=/home/typlosion/work/ACDC/vehicle-cloud-inference/model/1/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving`
 
 
 OR Using GPU (CHECK NOTE BEFORE RUNNING) by runnning
 
-`docker run --gpus all -p 8501:8501 --mount type=bind,source=/home/typlosion/work/ACDC/vehicle-cloud-inference/tf_serving/model/1/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving:latest-gpu`
+`docker run --gpus all -p 8501:8501 --mount type=bind,source=/home/typlosion/work/ACDC/vehicle-cloud-inference/model/1/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving:latest-gpu`
 
 
 After that, just run the segmentation_mobilenet_serving.py to get the inference
@@ -39,5 +39,6 @@ Once set up,
 `docker pull tensorflow/serving:latest-gpu` 
 
 Models used:
-1. best_weights_e_00231_val_loss_0.1518.zip
-2. mobilenetv3_large_os8_deeplabv3plus_72miou.zip
+1. [best_weights_e_00231_val_loss_0.1518.zip](https://git.rwth-aachen.de/ika/acdc-research-project-ss23/acdc-research-project-ss23/uploads/e5bdaf3b7aa6d2b59bbd098e55eb079c/best_weights_e_00231_val_loss_0.1518.zip)
+   
+2. [mobilenetv3_large_os8_deeplabv3plus_72miou.zip](https://git.rwth-aachen.de/ika/acdc-research-project-ss23/acdc-research-project-ss23/uploads/3f73d5bd57acc307182278c0e0449650/mobilenetv3_large_os8_deeplabv3plus_72miou.zip)

@@ -1,14 +1,21 @@
-import os
-import json
-import shutil
+
 import requests
 import numpy as np
 import tensorflow as tf
-import matplotlib.pyplot as plt
 from img_utils import resize_image
 import cv2
+import xml.etree.ElementTree as ET
+import json
+import time
+import argparse
 
-model = tf.keras.load_model('model/1')
+# model = tf.keras.load_model('model/1')
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Inference script for semantic segmentation model")
+    parser.add_argument("--model-path", type=str, required=True, help="Path to the TensorFlow Serving model")
+    parser.add_argument("--image-path", type=str, required=True, help="Path to the input image")
+    return parser.parse_args()
 
 def segmentation_map_to_rgb(segmentation_map,color_palette):
     """
@@ -22,15 +29,7 @@ def segmentation_map_to_rgb(segmentation_map,color_palette):
     :param segmentation_map: ndarray numpy with shape (height, width)
     :return: RGB encoding with shape (height, width, 3)
     """
-
-    ### START CODE HERE ###
-    
-    # Task 1:
-    # Replace the following command
-    #print(segmentation_map)
     rgb_encoding = color_palette[segmentation_map]
-
-    ### END CODE HERE ###
     return rgb_encoding
 
 def parse_convert_xml(conversion_file_path):
@@ -67,22 +66,43 @@ def parse_convert_xml(conversion_file_path):
     return color_palette, class_names, color_to_label
 
 
+def predict_rest(json_data, url):
+    json_response = requests.post(url, data=json_data)
+    response = json.loads(json_response.text)
+    #print(response)
+    predictions = np.array(response["predictions"])
+    # prediction = tf.squeeze(predictions).numpy()
+    prediction = np.squeeze(predictions).tolist()  # Convert to list
+    argmax_prediction = np.argmax(prediction, axis=2)
+    prediction = segmentation_map_to_rgb(argmax_prediction,color_palette=color_palette).astype(np.uint8)
+    #prediction = cv2.cvtColor(prediction,cv2.COLOR_BGR2RGB)
 
-def preprocess(image):
-    path_to_xml = 'convert.xml'
-    color_palette, class_names, color_to_label = parse_convert_xml(path_to_xml)
+    return prediction
+
+def preprocess(image_path):
+
+    # start = time.time()
+
+    #path_to_xml = 'convert.xml'
 
     width = 2048
     height = 1024
 
-    input_img = cv2.imread('image.png')
+    input_img = cv2.imread(image_path)
     input_img = resize_image(input_img,[height,width])
 
-
-
-    batched_img = tf.expand_dims(input_img, axis=0)
-    batched_img = tf.cast(batched_img, tf.uint8)
+    batched_img = np.expand_dims(input_img, axis=0)
+    batched_img = batched_img.astype(np.uint8)
     #print(f"Batched image shape: {batched_img.shape}")
 
 
-def postprocess()
+
+
+def postprocess(response):
+    path_to_xml = 'cityscapes.xml'
+    color_palette, _,_ = parse_convert_xml(path_to_xml)
+    predictions = np.array(response["predictions"])
+    # prediction = tf.squeeze(predictions).numpy()
+    prediction = np.squeeze(predictions).tolist()  # Convert to list
+    argmax_prediction = np.argmax(prediction, axis=2)
+    prediction = segmentation_map_to_rgb(argmax_prediction,color_palette=color_palette).astype(np.uint8)
