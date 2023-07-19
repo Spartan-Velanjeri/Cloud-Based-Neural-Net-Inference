@@ -5,7 +5,7 @@ from img_utils import resize_image
 import cv2
 import xml.etree.ElementTree as ET
 import time
-
+import speedtest
 
 def segmentation_map_to_rgb(segmentation_map,color_palette):
     """
@@ -64,6 +64,14 @@ def parse_convert_xml(conversion_file_path):
     return color_palette, class_names, color_to_label
 
 def predict_rest(json_data, url):
+    
+    """
+    Models available
+    
+    best_weights_e=00231_val_loss=0.1518
+    mobilenetv3_large_os8_deeplabv3plus_72miou
+    
+    """
     json_response = requests.post(url, data=json_data)
     response = json.loads(json_response.text)
     #print(response)
@@ -76,7 +84,34 @@ def predict_rest(json_data, url):
 
     return prediction
 
+
+def humansize(nbytes):
+    suffixes = ['b', 'Kb', 'Mb', 'Gb', 'Tb', 'Pb']
+    i = 0
+    while nbytes >= 1024 and i < len(suffixes)-1:
+        nbytes /= 1024.
+        i += 1
+    f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
+    return '%s %s' % (f, suffixes[i])
+
+
 start = time.time()
+
+#st = speedtest.Speedtest()
+
+#ds = st.download()
+#ds = humansize(ds)
+
+#us = st.upload()
+#us = humansize(us)
+
+#servernames =[]  
+#st.get_servers(servernames)  
+#ping = (st.results.ping)  
+
+
+internet_complete = time.time()
+
 path_to_xml = 'cityscapes.xml'
 
 #path_to_xml = 'convert.xml'
@@ -96,7 +131,7 @@ input_img = resize_image(input_img,[height,width])
 batched_img = np.expand_dims(input_img, axis=0)
 batched_img = batched_img.astype(np.uint8)
 print(f"Batched image shape: {batched_img.shape}")
-
+preprocess_time = time.time()
 
 # model_outputs = model(batched_img)
 # print(f"Model output shape: {model_outputs.shape}")
@@ -123,12 +158,21 @@ url = "http://localhost:8501/v1/models/mobilenet:predict" #If tfserving on your 
 
 
 print("Now using the serving \n")
+pred_start = time.time()
 prediction = predict_rest(data, url)
-
+pred_end = time.time()
 
 print(f"REST output shape: {prediction.shape}")
 end = time.time()
+
 print("total time",end-start)
+print("Preprocessing time", preprocess_time-start)
+print("Prediction time", pred_end - pred_start)
+print("Internet Stats Calc Time", internet_complete-start)
+#print("Ping:",ping)
+#print("Download Speed",ds)
+#print("Upload Speed",us)
+
 cv2.imshow('prediction',prediction)
 cv2.waitKey(0)
 #print(f"Predicted class: {postprocess(rest_outputs)}")
