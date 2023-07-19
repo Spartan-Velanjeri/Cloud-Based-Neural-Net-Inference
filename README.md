@@ -1,15 +1,18 @@
 # Tasks pending
--[] Clean up the README instructions
--[] Add the frozen graph runner codes in a seperate utils folder. Add all other helper func in a utils.py file
--[] Push the same changes on the gitlab branch 
--[] Benchmark with Amol's, Anujoy's and Office PC
--[] Try to test the tfserving model on AWS in office
+
+- [ ] Clean up the README instructions
+- [ ] Add the frozen graph runner codes in a seperate utils folder. Add all other helper func in a utils.py file
+- [ ] Push the same changes on the gitlab branch 
+- [ ] Benchmark with Amol's, Anujoy's and Office PC
+- [ ] Try to test the tfserving model on AWS in office
 
 # Errors or warnings
--[] Ptxas performed by driver, is that a problem?
+
+- [ ] Ptxas performed by driver, is that a problem?
 
 
 # vehicle-cloud-inference
+
 Part of the ACDC Research Project 
 
 This branch is mainly for TF-Serving related progress
