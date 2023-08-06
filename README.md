@@ -1,6 +1,7 @@
 # Tasks pending
 
 - [ ] Clean up the README instructions
+- [ ] Run TFserving with IKA Workstation (GPU) 
 - [ ] Add the frozen graph runner codes in a seperate utils folder. Add all other helper func in a utils.py file
 - [ ] Push the same changes on the gitlab branch 
 - [ ] Benchmark with Amol's, Anujoy's and Office PC
