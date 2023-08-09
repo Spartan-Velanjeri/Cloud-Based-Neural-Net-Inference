@@ -91,10 +91,11 @@ def parse_convert_xml(conversion_file_path):
     return color_palette, class_names, color_to_label
 
 
-def thefrozenfunc(input_img,model_path='model/mobilenet_v3_small_968_608_os8.pb',xml_path='xml/convert.xml'):
+def thefrozenfunc(input_img,model_path='model/mobilenet_v3_large_968_608_os8.pb',xml_path='xml/convert.xml'):
 
     if model_path == None:
         model_path = 'model/mobilenet_v3_small_968_608_os8.pb'
+    start = time.time()
     # Reads from Frozen graph
     #path_to_frozen_graph = 'model/mobilenet_v3_small_968_608_os8.pb'
     path_to_frozen_graph = model_path
@@ -107,13 +108,16 @@ def thefrozenfunc(input_img,model_path='model/mobilenet_v3_small_968_608_os8.pb'
     height = 608
 
     frozen_func = load_frozen_graph(path_to_frozen_graph)
+    loaded_model = time.time()
 
     #input_img = cv2.imread(image)
     input_img = resize_image(input_img,[height,width])
     #input_img = input_img / 255.0 #normalisation not required for frozen graphs
 
     input_img = input_img[None]
+    prediction_start = time.time()
     predictions = frozen_func(tf.cast(input_img,tf.uint8))
+    prediction_end = time.time()
     #print(predictions)
     prediction = tf.squeeze(predictions).numpy()
 
@@ -121,6 +125,13 @@ def thefrozenfunc(input_img,model_path='model/mobilenet_v3_small_968_608_os8.pb'
     prediction = segmentation_map_to_rgb(prediction,color_palette).astype(np.uint8)
     
     prediction = cv2.cvtColor(prediction, cv2.COLOR_BGR2RGB)
+    end = time.time()
+
+    print("Entire time",end-start)
+    print("Model Loading",loaded_model-start)
+    print("Prediction time",prediction_end-prediction_start)
+    #print("Preprocessing step",prediction_start-preprocess_start)
+    print("Postprocessing",end-prediction_end)
 
     return prediction
 
@@ -130,6 +141,7 @@ def thesavedfunc(input_img,model_path='model/mobilenetv3_large_os8_deeplabv3plus
         model_path='model/mobilenetv3_large_os8_deeplabv3plus_72miou'
     start = time.time()
     model = tf.saved_model.load(model_path)
+    loaded_model = time.time()
     #path_to_xml = '/xml/cityscapes.xml'
     path_to_xml = xml_path
     #path_to_xml = 'convert.xml'
@@ -141,27 +153,33 @@ def thesavedfunc(input_img,model_path='model/mobilenetv3_large_os8_deeplabv3plus
 
     #input_img = cv2.imread(image)
     #input_img = cv2.cvtColor(input_img,cv2.COLOR_BGR2RGB)
+    preprocess_start = time.time()
     input_img = resize_image(input_img,[height,width])
     input_img = input_img / 255.0 #normalisation
-
-    
     input_img = np.expand_dims(input_img,axis=0)
     input_img = tf.cast(input_img,dtype=tf.float32)
+
+    prediction_start = time.time()
     predictions = model(input_img)
+    prediction_end = time.time()
 
     prediction = tf.squeeze(predictions).numpy()
     argmax_prediction = np.argmax(prediction, axis=2)
     prediction = segmentation_map_to_rgb(argmax_prediction,color_palette).astype(np.uint8)
     prediction = cv2.cvtColor(prediction, cv2.COLOR_BGR2RGB)
     end = time.time()
-    print(end-start)
+    print("Entire time",end-start)
+    print("Model Loading",loaded_model-start)
+    print("Prediction time",prediction_end-prediction_start)
+    print("Preprocessing step",prediction_start-preprocess_start)
+    print("Postprocessing",end-prediction_end)
     return prediction
 # Setup 
 
 if __name__ == "__main__":
-    path_image = '../data/image.png'
+    path_image = 'data/image.png'
     image = cv2.imread(path_image)
-    prediction = thesavedfunc(image)
-    #prediction = thefrozenfunc(image)
-    cv2.imshow('prediction',prediction)
-    cv2.waitKey(0)
+    #prediction = thesavedfunc(image)
+    prediction = thefrozenfunc(image)
+    #cv2.imshow('prediction',prediction)
+    #cv2.waitKey(0)
