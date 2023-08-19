@@ -24,13 +24,13 @@ In order to run the tf-serving
 
 First let's run the Tensorflow Serving Docker Container (CPU) by running (make sure to be in the vehicle-cloud-inference directory)
 
-`docker run -p 8501:8501 --mount type=bind,source=./model/mobilenetv3_large_os8_deeplabv3plus_72miou/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving`
+`docker run -p 8501:8501 --mount type=bind,source={your full path here}/model/mobilenetv3_large_os8_deeplabv3plus_72miou/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving`
 
 (if you want to run the model mobilenetv3_large_os8_deeplabv3plus_72miou present inside the models folder)
 
 OR Using GPU (CHECK NOTE BEFORE RUNNING) by runnning (make sure to be in the vehicle-cloud-inference directory)
 
-`docker run --gpus all -p 8501:8501 --mount type=bind,source=./model/mobilenetv3_large_os8_deeplabv3plus_72miou/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving:latest-gpu`
+`docker run --gpus all -p 8501:8501 --mount type=bind,source={your full path here}/model/mobilenetv3_large_os8_deeplabv3plus_72miou/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving:latest-gpu`
 
 (if you want to run the model mobilenetv3_large_os8_deeplabv3plus_72miou present inside the models folder)
 
@@ -66,9 +66,9 @@ Once set up,
 2. Make sure to pull the TFServing Docker Image first (either `docker pull tensorflow/serving` (FOR CPU) or `docker pull tensorflow/serving:latest-gpu` (FOR GPU)). The Workstation(Cloud station) must have the Nvidia Driver and the Nvidia Container Toolkit installed before pulling the docker.
     
 3. Run the Docker container on the IKA Workstation using the code (Using the terminal on VSCode which is connected to the Workstation) (make sure to be in the vehicle-cloud-inference directory)
-   `docker run -p 8501:8501 --mount type=bind,source=source=./model/mobilenetv3_large_os8_deeplabv3plus_72miou/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving` (IF CPU)
+   `docker run -p 8501:8501 --mount type=bind,source=source={your full path here}/model/mobilenetv3_large_os8_deeplabv3plus_72miou/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving` (IF CPU)
     
-   `docker run --gpus all -p 8501:8501 --mount type=bind,source=source=./model/mobilenetv3_large_os8_deeplabv3plus_72miou/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving:latest-gpu` (IF GPU)
+   `docker run --gpus all -p 8501:8501 --mount type=bind,source=source={your full path here}/model/mobilenetv3_large_os8_deeplabv3plus_72miou/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving:latest-gpu` (IF GPU)
     
    (if you want to run the model mobilenetv3_large_os8_deeplabv3plus_72miou present inside the models folder)
 
