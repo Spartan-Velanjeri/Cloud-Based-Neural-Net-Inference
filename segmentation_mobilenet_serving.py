@@ -122,14 +122,15 @@ height = 1024
 
 input_img = cv2.imread('image.png')
 input_img = resize_image(input_img,[height,width])
-
+input_img = input_img / 255.0
 
 
 # batched_img = tf.expand_dims(input_img, axis=0)
 # batched_img = tf.cast(batched_img, tf.uint8)
 
 batched_img = np.expand_dims(input_img, axis=0)
-batched_img = batched_img.astype(np.uint8)
+batched_img = batched_img.astype(np.float)
+#batched_img = batched_img.astype(np.uint8)
 print(f"Batched image shape: {batched_img.shape}")
 preprocess_time = time.time()
 
@@ -160,6 +161,7 @@ url = "http://localhost:8501/v1/models/mobilenet:predict" #If tfserving on your 
 print("Now using the serving \n")
 pred_start = time.time()
 prediction = predict_rest(data, url)
+prediction = cv2.cvtColor(prediction,cv2.COLOR_BGR2RGB)
 pred_end = time.time()
 
 print(f"REST output shape: {prediction.shape}")
@@ -168,7 +170,7 @@ end = time.time()
 print("total time",end-start)
 print("Preprocessing time", preprocess_time-start)
 print("Prediction time", pred_end - pred_start)
-print("Internet Stats Calc Time", internet_complete-start)
+#print("Internet Stats Calc Time", internet_complete-start)
 #print("Ping:",ping)
 #print("Download Speed",ds)
 #print("Upload Speed",us)
