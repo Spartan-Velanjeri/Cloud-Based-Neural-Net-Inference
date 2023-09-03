@@ -1,3 +1,6 @@
+# development folders
+bag/left_camera_templergraben.bag
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
