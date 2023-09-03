@@ -1,5 +1,7 @@
-# development folders
+# development folders and files
 bag/left_camera_templergraben.bag
+docker/Dockerfile
+ws_mqtt_nodes/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

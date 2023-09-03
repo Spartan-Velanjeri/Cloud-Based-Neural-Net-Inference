@@ -26,6 +26,8 @@ EOF
 # PARAMETERS can be passed as environment variables #
 if [[ -z "${IMAGE_NAME}" ]]; then
   IMAGE_NAME="rwthika/acdc"
+  # IMAGE_NAME="acdc_mqtt"
+
 fi
 if [[ -z "${IMAGE_TAG}" ]]; then
   IMAGE_TAG="latest"
