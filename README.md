@@ -4,7 +4,7 @@ This repository is part of the ACDC Research Project and focuses on TF-Serving r
 
 ## Tasks for now
 
-- [ ] Add ROSBag Integration
+- [X] Add ROSBag Integration
 - [ ] Benchmark
 ## Features
 
@@ -19,6 +19,7 @@ Before you begin, ensure you have met the following requirements:
 - Docker is installed on your machine.
 - For GPU usage, ensure NVIDIA driver and NVIDIA Container Toolkit are installed.
 - Access to the IKA Workstation or a cloud station via SSH.
+
 
 ## Installation
 
@@ -44,21 +45,32 @@ Before you begin, ensure you have met the following requirements:
    
 ## Usage
 
-### Running TensorFlow Serving Docker Container on your PC
+### Running TensorFlow Serving Docker Container on your PC (Will automatically pull if Docker image not found on Device)
 
 - For CPU:
   ```bash
-  docker run -p 8501:8501 --mount type=bind,source={full_path}/model/mobilenetv3_large_os8_deeplabv3plus_72miou/,target={full_path}/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving
+  docker run -p -p 8500:8500 -p 8501:8501 --mount type=bind,source={full_path}/model/mobilenetv3_large_os8_deeplabv3plus_72miou/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving
   ```
 - For GPU(ensure NVIDIA Toolkit is installed)
   ```bash
-  docker run --gpus all -p 8501:8501 --mount type=bind,source={full_path}/model/mobilenetv3_large_os8_deeplabv3plus_72miou/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving:latest-gpu
+  docker run --gpus all -p 8500:8500 -p 8501:8501 --mount type=bind,source={full_path}/model/mobilenetv3_large_os8_deeplabv3plus_72miou/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving:2.11.1-gpu
+
   ```
 ### Running Inference
 
 After starting the Docker container, execute the following command to perform inference:
 ```bash
-python segmentation_mobilenet_serving.py
+python segmentation_mobilenet_serving.py -h 
+
+Specify trigger and model_export_path.
+
+options:
+  -h, --help            show this help message and exit
+  --bag BAG             Path to the Bag file
+  --model_export_path MODEL_EXPORT_PATH
+                        Path to the model export directory. Make sure the model path matches the one TFServing is serving :)
+  --trigger TRIGGER     Trigger for mode (e.g., "grpc" or "rest").
+
 ```
 
 ### Connecting to IKA Workstation (If you want to run the inference there)
@@ -66,11 +78,11 @@ python segmentation_mobilenet_serving.py
 
 2. Pull the required TensorFlow Serving Docker Image: 
    ```bash
-   docker pull tensorflow/serving:latest-gpu (if using GPU).
+   docker pull tensorflow/serving:2.11.1-gpu (if using GPU).
    docker pull tensorflow/serving (if using CPU)
    ```
 3. You can run the similar commands as in [section 2](#running-tensorflow-serving-docker-container-on-your-pc)
-4. Enable port forwarding to port 8501.
+4. Enable port forwarding to port 8501(HTTPS REST) or port 8500 (gRPC).
 5. Update the URL in segmentation_mobilenet_serving.py to match the workstation's URL
    (For example http://i2200049.ika.rwth-aachen.de:8501/v1/models/mobilenet:predict in the URL variable)
 6. Run segmentation_mobilenet_serving.py to view results.
@@ -80,6 +92,7 @@ python segmentation_mobilenet_serving.py
 -  Ensure Docker and NVIDIA Toolkit (if using GPU) are properly set up before running.
 -  Update file paths and URLs as required.
 -  Port forwarding may be necessary for remote inference.
+-  We are opening both 8500 and 8501 ports for gRPC and HTTPS respectively. Use gRPC for faster inference
 
 ## Credits
 
