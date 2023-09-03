@@ -15,6 +15,8 @@ from frozen_graph_runner import thefrozenfunc, thesavedfunc
 import sys
 ros_args = rospy.myargv(argv=sys.argv)
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
+
 # MQTT Broker
 MQTT_BROKER_IP = "localhost"
 MQTT_BROKER_PORT = 1883
@@ -70,45 +72,45 @@ class CloudNode:
     #         rospy.logerr(e)
     
     def on_mqtt_message(self, client, userdata, msg):
-            rospy.loginfo("Received vehicle image from MQTT broker from topic: %s", MQTT_SUB_CAMERA_TOPIC)
+        rospy.loginfo("Received vehicle image from MQTT broker from topic: %s", MQTT_SUB_CAMERA_TOPIC)
 
-            # preprocessing image for inference
-            np_arr = np.frombuffer(msg.payload, np.uint8)
-            cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR) # Seems to work with Jpg format
-            
-            # Display image using matplotlib
-            #plt.imshow(cv_image)
-            #plt.show(1)
+        # preprocessing image for inference
+        np_arr = np.frombuffer(msg.payload, np.uint8)
+        cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR) # Seems to work with Jpg format
+        
+        # Display image using matplotlib
+        #plt.imshow(cv_image)
+        #plt.show(1)
 
-            # Publish image to ROS topic
-            # publishing vehicle image as a ROS Topic incase you got 
-            # other operations to do on the cloud
-            ros_image = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
-            rospy.loginfo("processed vehicle image from MQTT broker")
+        # Publish image to ROS topic
+        # publishing vehicle image as a ROS Topic incase you got 
+        # other operations to do on the cloud
+        ros_image = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
+        rospy.loginfo("processed vehicle image from MQTT broker")
 
-            # self.ros_pub.publish(ros_image)
-            # rospy.loginfo("processed vehicle camera image and published to ROS for inference:")
-            # Inference function 
+        # self.ros_pub.publish(ros_image)
+        # rospy.loginfo("processed vehicle camera image and published to ROS for inference:")
+        # Inference function 
 
-            # starting inference
-            rospy.loginfo("starting inference")
-            if self.use_saved_model:
-                inferred_image = thesavedfunc(cv_image,self.model_path,self.xml_path)
-                rospy.loginfo("saved Func inference")
-            else:
-                inferred_image = thefrozenfunc(cv_image,self.model_path,self.xml_path)
-                rospy.loginfo("frozen Func inference")
+        # starting inference
+        rospy.loginfo("starting inference")
+        if self.use_saved_model:
+            inferred_image = thesavedfunc(cv_image,self.model_path,self.xml_path)
+            rospy.loginfo("saved Func inference")
+        else:
+            inferred_image = thefrozenfunc(cv_image,self.model_path,self.xml_path)
+            rospy.loginfo("frozen Func inference")
 
-            rospy.loginfo("inference completed")
-            
-            #inferred_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
-            #inferred_image = thesavedfunc(cv_image) # To infer from models in saved model format
-            # inferred_image = thefrozenfunc(cv_image) # To infer from models in frozen graph state
+        rospy.loginfo("inference completed")
+        
+        #inferred_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+        #inferred_image = thesavedfunc(cv_image) # To infer from models in saved model format
+        # inferred_image = thefrozenfunc(cv_image) # To infer from models in frozen graph state
 
-            # Publishing infered image through MQTT Topic
-            __,jpeg = cv2.imencode('.jpg',inferred_image)
-            self.mqtt_client.publish(MQTT_PUB_SEGMENTED_TOPIC, jpeg.tobytes())
-            rospy.loginfo("img published to broker at topic %s",MQTT_PUB_SEGMENTED_TOPIC)
+        # Publishing infered image through MQTT Topic
+        __,jpeg = cv2.imencode('.jpg',inferred_image)
+        self.mqtt_client.publish(MQTT_PUB_SEGMENTED_TOPIC, jpeg.tobytes())
+        rospy.loginfo("img published to broker at topic %s",MQTT_PUB_SEGMENTED_TOPIC)
 
     def run(self):
         rospy.loginfo("starting cloud node")

@@ -1,41 +1,78 @@
 ## new docker run notes
 
-### vehicle node setup
 
-1. start docker container
+### mosquitto broker setup
+
+```
+docker run -it -p 1883:1883 -p 9001:9001 --network host eclipse-mosquitto
+```
+
+--network host => for same system
+else use overlay
+
+### vehicle and cloud nodes setup
+
+
+1. move to git directory
     ```
     cd vehicle-cloud-inference
-    ./docker/run.sh -a
     ```
 
-2. switch to created 'rosuser' from default 'root' user
+2. setup ros workspaces (###first time setup)
+    ```
+    cd ..
+    ./setup_new_ros_ws.sh
+    ```
+    note: run as normal user , not docker
+
+3. start docker containers in separate terminals
+
+    vehicle node start docker
+    ```
+    ./docker/run.sh -n cloud_node -a
+    ```
+
+    cloud node start docker
+    ```
+    ./docker/run.sh -n cloud_node -a
+    ```
+
+
+4. switch to created 'rosuser' from default 'root' user
     - needed as 'rwthika/acdc:latest' docker image starts with root user and causes issues
-```
-su rosuser
-# password: rosuser
-```
 
-3. setup ros workspace (first rime setup)
-```
-cd ..
-./setup_new_ros_ws.sh
-```
-reference
-```
-rosuser@nemo:~/ws/catkin_workspace$ 
-rosuser@nemo:~/ws/catkin_workspace$ cd ..
-rosuser@nemo:~/ws$ ./setup_new_ros_ws.sh 
-```
+    ```
+    ../user_setup_docker.sh
+    ```
+
+    or directly,
+    ```
+    su rosuser
+    # password: rosuser
+    ```
+
 4. switch to workspace and source devel in shell
-```
-cd ws_mqtt_nodes
-source devel/setup.bash
-```
+    
+    cloud_node docker
+    ```
+    cd ws_mqtt_nodes/cloud_node
+    source devel/setup.bash
+    ```
 
-5. start node
-```
-roslaunch mqtt_node cloud_node.launch
-```
+    vehicle_node docker
+    ```
+    cd ws_mqtt_nodes/vehicle_node
+    source devel/setup.bash
+    ```
+
+    5. start the nodes
+    ```
+    roslaunch mqtt_node cloud_node.launch
+    ```
+    ```
+    roslaunch mqtt_node vehicle_node.launch
+    ```
+
 
 #### expected terminal output // for reference
 ```
