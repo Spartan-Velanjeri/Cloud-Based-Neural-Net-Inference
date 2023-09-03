@@ -22,61 +22,61 @@ MQTT_SUB_SEGMENTED_TOPIC = "/segmented_images"
 ROS_PUB_SEGMENTED_TOPIC = "/segmented_ros_images"
 ROS_SUB_CAMERA_TOPIC = "/sensors/camera/left/image_raw"
 
-class ImageSubscriber:
-    def __init__(self):
-        self.bridge = CvBridge()
+# class ImageSubscriber:
+#     def __init__(self):
+#         self.bridge = CvBridge()
 
-        # MQTT setup
-        self.mqtt_client = mqtt.Client()
-        self.mqtt_client.on_message = self.on_mqtt_message
-        self.mqtt_client.connect(MQTT_BROKER_IP, MQTT_BROKER_PORT, 60)
-        self.mqtt_client.subscribe(MQTT_SUB_SEGMENTED_TOPIC)
-        self.mqtt_client.loop_start()
+#         # MQTT setup
+#         self.mqtt_client = mqtt.Client()
+#         self.mqtt_client.on_message = self.on_mqtt_message
+#         self.mqtt_client.connect(MQTT_BROKER_IP, MQTT_BROKER_PORT, 60)
+#         self.mqtt_client.subscribe(MQTT_SUB_SEGMENTED_TOPIC)
+#         self.mqtt_client.loop_start()
 
-        # ROS setup
-        self.ros_pub = rospy.Publisher(ROS_PUB_SEGMENTED_TOPIC, Image, queue_size=10)
-        rospy.init_node('mqtt_image_subscriber', anonymous=True)
+#         # ROS setup
+#         self.ros_pub = rospy.Publisher(ROS_PUB_SEGMENTED_TOPIC, Image, queue_size=10)
+#         rospy.init_node('mqtt_image_subscriber', anonymous=True)
 
-    def on_mqtt_message(self, client, userdata, msg):
-            rospy.loginfo_once("Received segmented image from MQTT")
-            np_arr = np.frombuffer(msg.payload, np.uint8)
-            cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR) # Seems to work with Jpg format
+#     def on_mqtt_message(self, client, userdata, msg):
+#             rospy.loginfo_once("Received segmented image from MQTT")
+#             np_arr = np.frombuffer(msg.payload, np.uint8)
+#             cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR) # Seems to work with Jpg format
             
-            # Display image using matplotlib
-            plt.imshow(cv_image)
-            plt.show()
+#             # Display image using matplotlib
+#             plt.imshow(cv_image)
+#             plt.show()
 
-            # Publish image to ROS topic
-            ros_image = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
-            self.ros_pub.publish(ros_image)
+#             # Publish image to ROS topic
+#             ros_image = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
+#             self.ros_pub.publish(ros_image)
 
 
 
-class ImagePublisher:
-    def __init__(self):
-        self.bridge = CvBridge()
+# class ImagePublisher:
+#     def __init__(self):
+#         self.bridge = CvBridge()
         
-        # MQTT setup
-        self.mqtt_client = mqtt.Client()
-        #self.mqtt_client.on_message = self.on_mqtt_message
-        self.mqtt_client.connect(MQTT_BROKER_IP,MQTT_BROKER_PORT,60)
-        self.mqtt_client.publish(MQTT_PUB_CAMERA_TOPIC)
-        self.mqtt_client.loop_start()
+#         # MQTT setup
+#         self.mqtt_client = mqtt.Client()
+#         #self.mqtt_client.on_message = self.on_mqtt_message
+#         self.mqtt_client.connect(MQTT_BROKER_IP,MQTT_BROKER_PORT,60)
+#         self.mqtt_client.publish(MQTT_PUB_CAMERA_TOPIC)
+#         self.mqtt_client.loop_start()
 
-        # ROS setup
-        self.ros_sub = rospy.Subscriber(ROS_SUB_CAMERA_TOPIC,Image,self.callback)
+#         # ROS setup
+#         self.ros_sub = rospy.Subscriber(ROS_SUB_CAMERA_TOPIC,Image,self.callback)
         
-        rospy.init_node('mqtt_image_publisher',anonymous=True)
+#         rospy.init_node('mqtt_image_publisher',anonymous=True)
 
-    def callback(self,data):
-        try:
-            rospy.loginfo("reading from camera feed")
-            cv_image = self.bridge.imgmsg_to_cv2(data,desired_encoding='bgr8')
-            _,jpeg = cv2.imencode('.jpg',cv_image)
-            self.mqtt_client.publish(MQTT_PUB_CAMERA_TOPIC,jpeg.tobytes())
-            rospy.loginfo("img published to broker at topic %s",MQTT_PUB_CAMERA_TOPIC)
-        except self.bridge.CvBridgeError as e:
-            rospy.logerr(e)
+#     def callback(self,data):
+#         try:
+#             rospy.loginfo("reading from camera feed")
+#             cv_image = self.bridge.imgmsg_to_cv2(data,desired_encoding='bgr8')
+#             _,jpeg = cv2.imencode('.jpg',cv_image)
+#             self.mqtt_client.publish(MQTT_PUB_CAMERA_TOPIC,jpeg.tobytes())
+#             rospy.loginfo("img published to broker at topic %s",MQTT_PUB_CAMERA_TOPIC)
+#         except self.bridge.CvBridgeError as e:
+#             rospy.logerr(e)
 
 
 class VehicleNode:
@@ -105,7 +105,12 @@ class VehicleNode:
     def callback(self,data):
         try:
             rospy.loginfo_once("reading from camera feed")
+            #cv_image = self.bridge.imgmsg_to_cv2(data,desired_encoding='bgr8')
             cv_image = self.bridge.imgmsg_to_cv2(data,desired_encoding='bgr8')
+
+            #cv2.imshow('vehicle',cv_image)
+            #cv2.waitKey(0)
+            #plt.show(0)
             __,jpeg = cv2.imencode('.jpg',cv_image)
             self.mqtt_pub_client.publish(MQTT_PUB_CAMERA_TOPIC,jpeg.tobytes())
             rospy.loginfo_once("img published to broker at topic %s",MQTT_PUB_CAMERA_TOPIC)
