@@ -90,64 +90,49 @@ def parse_convert_xml(conversion_file_path):
 
     return color_palette, class_names, color_to_label
 
+def model_initialiser(model_path,xml_path,use_saved_model):
+    if use_saved_model:
+        if model_path == None:
+            model_path='model/mobilenetv3_large_os8_deeplabv3plus_72miou'
+        model = tf.saved_model.load(model_path)
+    
+    else:
+        if model_path == None:
+            model_path = 'model/mobilenet_v3_small_968_608_os8.pb'
+        model = load_frozen_graph(model_path)
+    color_palette,__,__ = parse_convert_xml(xml_path)
+    return model,color_palette
 
-def thefrozenfunc(input_img,model_path='model/mobilenet_v3_large_968_608_os8.pb',xml_path='xml/convert.xml'):
-
-    if model_path == None:
-        model_path = 'model/mobilenet_v3_small_968_608_os8.pb'
+def thefrozenfunc(input_img,model,color_palette):
     start = time.time()
-    # Reads from Frozen graph
-    #path_to_frozen_graph = 'model/mobilenet_v3_small_968_608_os8.pb'
-    path_to_frozen_graph = model_path
-    #path_to_xml = 'cityscapes.xml'
-    #path_to_xml = '/home/typlosion/mqtt_ws/src/mqtt_node/src/xml/convert.xml'
-    path_to_xml = xml_path
-    color_palette, class_names, color_to_label = parse_convert_xml(path_to_xml)
 
     width = 968 # Frozen model's input is 968*608
     height = 608
 
-    frozen_func = load_frozen_graph(path_to_frozen_graph)
-    loaded_model = time.time()
-
-    #input_img = cv2.imread(image)
     input_img = resize_image(input_img,[height,width])
     #input_img = input_img / 255.0 #normalisation not required for frozen graphs
-
     input_img = input_img[None]
-    prediction_start = time.time()
-    predictions = frozen_func(tf.cast(input_img,tf.uint8))
-    prediction_end = time.time()
-    #print(predictions)
-    prediction = tf.squeeze(predictions).numpy()
 
-    #print(prediction.shape)
+
+    prediction_start = time.time()
+    predictions = model(tf.cast(input_img,tf.uint8))
+    prediction_end = time.time()
+
+    prediction = tf.squeeze(predictions).numpy()
     prediction = segmentation_map_to_rgb(prediction,color_palette).astype(np.uint8)
-    
     prediction = cv2.cvtColor(prediction, cv2.COLOR_BGR2RGB)
     end = time.time()
 
     print("Entire time",end-start)
-    print("Model Loading",loaded_model-start)
     print("Prediction time",prediction_end-prediction_start)
-    #print("Preprocessing step",prediction_start-preprocess_start)
     print("Postprocessing",end-prediction_end)
 
     return prediction
 
-def thesavedfunc(input_img,model_path='model/mobilenetv3_large_os8_deeplabv3plus_72miou',xml_path='xml/cityscapes.xml'):
+def thesavedfunc(input_img,model,color_palette):
     # Reads from savedModel
-    if model_path == None:
-        model_path='model/mobilenetv3_large_os8_deeplabv3plus_72miou'
+
     start = time.time()
-    model = tf.saved_model.load(model_path)
-    loaded_model = time.time()
-    #path_to_xml = '/xml/cityscapes.xml'
-    path_to_xml = xml_path
-    #path_to_xml = 'convert.xml'
-
-    color_palette, class_names, color_to_label = parse_convert_xml(path_to_xml)
-
     width = 2048 # Saved model's input is 2048*1024
     height = 1024
 
@@ -168,8 +153,8 @@ def thesavedfunc(input_img,model_path='model/mobilenetv3_large_os8_deeplabv3plus
     prediction = segmentation_map_to_rgb(argmax_prediction,color_palette).astype(np.uint8)
     prediction = cv2.cvtColor(prediction, cv2.COLOR_BGR2RGB)
     end = time.time()
+
     print("Entire time",end-start)
-    print("Model Loading",loaded_model-start)
     print("Prediction time",prediction_end-prediction_start)
     print("Preprocessing step",prediction_start-preprocess_start)
     print("Postprocessing",end-prediction_end)
@@ -178,8 +163,9 @@ def thesavedfunc(input_img,model_path='model/mobilenetv3_large_os8_deeplabv3plus
 
 if __name__ == "__main__":
     path_image = 'data/image.png'
+    model, color_palette = model_initialiser('model/best_weights_e=00231_val_loss=0.1518','xml/cityscapes.xml',use_saved_model=True)
     image = cv2.imread(path_image)
-    #prediction = thesavedfunc(image)
-    prediction = thefrozenfunc(image)
+    prediction = thesavedfunc(image,model,color_palette)
+    #prediction = thefrozenfunc(image,model,color_palette)
     #cv2.imshow('prediction',prediction)
     #cv2.waitKey(0)

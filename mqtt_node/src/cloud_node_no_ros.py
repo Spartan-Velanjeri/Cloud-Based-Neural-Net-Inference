@@ -5,7 +5,7 @@ import cv2
 import argparse
 import os
 
-from frozen_graph_runner import thefrozenfunc, thesavedfunc
+from frozen_graph_runner import thefrozenfunc, thesavedfunc, model_initialiser
 
 # MQTT Broker
 MQTT_BROKER_IP = "localhost"
@@ -14,20 +14,25 @@ MQTT_SUB_CAMERA_TOPIC = "/vehicle_camera"
 MQTT_PUB_SEGMENTED_TOPIC = "/segmented_images"
 
 class CloudNode:
-    def __init__(self, model_path, xml_path, use_saved_model):
+    def __init__(self,model, color_palette,use_saved_model):
         self.bridge = CvBridge()
-
-        # Model Initialization
-        self.model_path = model_path
-        self.xml_path = xml_path
+        
+        # Model Initialisation
+        self.model = model
+        self.color_palette = color_palette
         self.use_saved_model = use_saved_model
 
-        # Setup MQTT Client
-        self.mqtt_pub_client = mqtt.Client()  # Publish segmented images to vehicle node
-        self.mqtt_sub_client = mqtt.Client()  # Subscribe camera images from vehicle node
-        self.mqtt_pub_client.connect(MQTT_BROKER_IP, MQTT_BROKER_PORT, 61)
-        self.mqtt_sub_client.connect(MQTT_BROKER_IP, MQTT_BROKER_PORT, 60)
+
+        #setup MQTT Client
+        self.mqtt_pub_client = mqtt.Client() # Publish segmented images to vehicle node
+        self.mqtt_sub_client = mqtt.Client() # Subscribe camera images from vehicle node
+        self.mqtt_pub_client.connect(MQTT_BROKER_IP,MQTT_BROKER_PORT,61) #same client as the segmented image subscribing on vehicle node
+        self.mqtt_sub_client.connect(MQTT_BROKER_IP,MQTT_BROKER_PORT,60) #same client as the camera image publishing on vehicle node
         self.mqtt_sub_client.on_message = self.on_mqtt_message
+
+        # List to vehicle's camera (ROS SUB)
+        #self.ros_sub = rospy.Subscriber(ROS_SUB_CAMERA_TOPIC,Image,self.callback)
+        #Callback has the MQTT sending to cloud part
 
         # Receive data from cloud through MQTT topic
         self.mqtt_sub_client.subscribe(MQTT_SUB_CAMERA_TOPIC)
@@ -42,9 +47,10 @@ class CloudNode:
 
         # Inference function
         if self.use_saved_model:
-            inferred_image = thesavedfunc(cv_image, self.model_path, self.xml_path)
+            inferred_image = thesavedfunc(cv_image,self.model,self.color_palette)
+
         else:
-            inferred_image = thefrozenfunc(cv_image, self.model_path, self.xml_path)
+            inferred_image = thefrozenfunc(cv_image,self.model,self.color_palette)
 
         # Publishing inferred image through MQTT Topic
         _, jpeg = cv2.imencode('.jpg', inferred_image)
@@ -92,8 +98,8 @@ if __name__ == '__main__':
             print("Model given is not a Frozen graph, could be a SavedModel or just a dir, switching to default Frozen graph model")
             args.model_path = None
 
-    print("Running the segmentation model with {} model and {} label file".format(args.model_path, args.xml_path))
-    cloud_node = CloudNode(args.model_path, args.xml_path, args.use_saved_model)
+    model,color_palette = model_initialiser(model_path=args.model_path, xml_path=args.xml_path, use_saved_model=args.use_saved_model)
+    cloud_node = CloudNode(model,color_palette,args.use_saved_model)
     try:
         cloud_node.run()
     except KeyboardInterrupt:
