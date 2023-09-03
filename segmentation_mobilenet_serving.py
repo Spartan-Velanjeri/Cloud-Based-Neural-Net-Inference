@@ -226,7 +226,7 @@ def bag_reader(bag_file,flag):
                         prediction_list.pop(0)
                         avg_total = sum(total_list)/len(total_list)
                         avg_prediction = sum(prediction_list)/len(prediction_list)
-                        print(avg_total,avg_prediction,len(total_list))
+                        print("Average Total Time: ",avg_total,"Average Prediction Time: ",avg_prediction)
                         break
                     
                     
