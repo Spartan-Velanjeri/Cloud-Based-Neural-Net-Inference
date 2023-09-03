@@ -49,7 +49,7 @@ Before you begin, ensure you have met the following requirements:
 
 - For CPU:
   ```bash
-  docker run -p -p 8500:8500 -p 8501:8501 --mount type=bind,source={full_path}/model/mobilenetv3_large_os8_deeplabv3plus_72miou/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving
+  docker run -p 8500:8500 -p 8501:8501 --mount type=bind,source={full_path}/model/mobilenetv3_large_os8_deeplabv3plus_72miou/,target=/models/mobilenet/1/ -e MODEL_NAME=mobilenet -t tensorflow/serving
   ```
 - For GPU(ensure NVIDIA Toolkit is installed)
   ```bash

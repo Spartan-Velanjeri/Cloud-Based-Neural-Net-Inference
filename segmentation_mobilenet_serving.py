@@ -332,6 +332,7 @@ if __name__ == "__main__":
                         help='Path to the model export directory. Make sure the model path matches the one TFServing is serving :)')
     parser.add_argument('--trigger', type=str, default='grpc', help='Trigger for mode (e.g., "grpc" or "rest").')
     args = parser.parse_args()
+    print("Running the %s Model",args.model_export_path)
     if args.trigger != 'rest': # Anything other than REST API, will trigger the gRPC
         print("Running gRPC mode")
         #gRPC Setting up 
