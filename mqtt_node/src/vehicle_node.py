@@ -9,6 +9,7 @@ import numpy as np
 from cv_bridge import CvBridge
 import cv2
 import matplotlib.pyplot as plt
+import time
 
 
 # MQTT Broker
@@ -92,7 +93,7 @@ class VehicleNode:
         self.mqtt_sub_client.on_message = self.on_mqtt_message #Does the callback job for the subscription of the segmented images
 
         # List to vehicle's camera (ROS SUB)
-        self.ros_sub = rospy.Subscriber(ROS_SUB_CAMERA_TOPIC,Image,self.callback)
+        self.ros_sub = rospy.Subscriber(ROS_SUB_CAMERA_TOPIC, Image, self.callback)
         #Callback has the MQTT sending to cloud part
 
         # Receive data from cloud through MQTT topic
@@ -102,34 +103,55 @@ class VehicleNode:
         self.mqtt_pub_client.loop_start()
         self.mqtt_sub_client.loop_start()
 
-    def callback(self,data):
+        self.ts_start_camera_read = time.perf_counter()
+        self.ts_processed_img = time.perf_counter()
+        self.ts_pub_mqtt_camera_img = time.perf_counter()
+
+        self.ts_mqtt_segmented_img = time.perf_counter()
+        self.ts_processed_segmented_img = time.perf_counter()
+        self.ts_ros_pub_segmented_img = time.perf_counter()
+
+
+    def callback(self, data):
         try:
+            self.ts_start_camera_read = time.perf_counter()
             rospy.loginfo_once("reading from camera feed")
-            #cv_image = self.bridge.imgmsg_to_cv2(data,desired_encoding='bgr8')
-            cv_image = self.bridge.imgmsg_to_cv2(data,desired_encoding='bgr8')
+
+            cv_image = self.bridge.imgmsg_to_cv2(data, desired_encoding='bgr8')
+            __,jpeg = cv2.imencode('.jpg',cv_image)
+            self.ts_processed_img = time.perf_counter()
 
             #cv2.imshow('vehicle',cv_image)
             #cv2.waitKey(0)
             #plt.show(0)
-            __,jpeg = cv2.imencode('.jpg',cv_image)
+
             self.mqtt_pub_client.publish(MQTT_PUB_CAMERA_TOPIC,jpeg.tobytes())
+            self.ts_pub_mqtt_camera_img = time.perf_counter()
             rospy.loginfo_once("img published to broker at topic %s",MQTT_PUB_CAMERA_TOPIC)
         
         except self.bridge.CvBridgeError as e:
             rospy.logerr(e)
     
     def on_mqtt_message(self, client, userdata, msg):
-            rospy.loginfo("Received segmented image from MQTT")
-            np_arr = np.frombuffer(msg.payload, np.uint8)
-            cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR) # Seems to work with Jpg format
-            
-            # Display image using matplotlib
-            #plt.imshow(cv_image)
-            #plt.show(1)
+        self.ts_mqtt_segmented_img= time.perf_counter()
+        rospy.loginfo("Received segmented image from MQTT")
 
-            # Publish image to ROS topic
-            ros_image = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
-            self.ros_pub.publish(ros_image)
+        np_arr = np.frombuffer(msg.payload, np.uint8)
+        cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR) # Seems to work with Jpg format
+        ros_image = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
+        self.ts_processed_segmented_img= time.perf_counter()
+        
+        # Display image using matplotlib
+        #plt.imshow(cv_image)
+        #plt.show(1)
+
+        # Publish image to ROS topic
+        self.ros_pub.publish(ros_image)
+        self.ts_ros_pub_segmented_img= time.perf_counter()
+
+        rospy.loginfo("total_time: %s", self.ts_ros_pub_segmented_img - self.ts_start_camera_read)
+
+
 
     def run(self):
         rospy.loginfo("starting vehicle node")
@@ -139,10 +161,9 @@ class VehicleNode:
 
 if __name__ == '__main__':
 
-    #image_subscriber = ImageSubscriber()
-    #image_publisher=ImagePublisher()
-    rospy.init_node('vehicle_node',anonymous=True)
+    rospy.init_node('vehicle_node', anonymous=True)
     vehicle_node = VehicleNode()
+
     try:
         vehicle_node.run()
     except rospy.ROSInterruptException:

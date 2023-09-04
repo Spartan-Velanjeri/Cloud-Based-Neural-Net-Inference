@@ -9,11 +9,17 @@ from cv_bridge import CvBridge
 import cv2
 import argparse
 import os
+import sys
+
 import matplotlib as plt
 
+# for running the models
+from frozen_graph_runner import thefrozenfunc, thesavedfunc, model_initialiser
 
-import sys
+
 ros_args = rospy.myargv(argv=sys.argv)
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
 
 # MQTT Broker
 MQTT_BROKER_IP = "localhost"
@@ -65,45 +71,47 @@ class CloudNode:
     #         rospy.logerr(e)
     
     def on_mqtt_message(self, client, userdata, msg):
-            rospy.loginfo("Received vehicle image from MQTT broker from topic: %s", MQTT_SUB_CAMERA_TOPIC)
+        rospy.loginfo("Received vehicle image from MQTT broker from topic: %s", MQTT_SUB_CAMERA_TOPIC)
 
-            # preprocessing image for inference
-            np_arr = np.frombuffer(msg.payload, np.uint8)
-            cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR) # Seems to work with Jpg format
-            
-            # Display image using matplotlib
-            #plt.imshow(cv_image)
-            #plt.show(1)
+        # preprocessing image for inference
+        np_arr = np.frombuffer(msg.payload, np.uint8)
+        cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR) # Seems to work with Jpg format
+        
+        # Display image using matplotlib
+        #plt.imshow(cv_image)
+        #plt.show(1)
 
-            # Publish image to ROS topic
-            # publishing vehicle image as a ROS Topic incase you got 
-            # other operations to do on the cloud
-            ros_image = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
-            rospy.loginfo("processed vehicle image from MQTT broker")
+        # # Publish image to ROS topic
+        # # publishing vehicle image as a ROS Topic incase you got 
+        # # other operations to do on the cloud
+        # ros_image = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
+        # rospy.loginfo("processed vehicle image from MQTT broker")
 
-            # self.ros_pub.publish(ros_image)
-            # rospy.loginfo("processed vehicle camera image and published to ROS for inference:")
-            # Inference function 
+        # self.ros_pub.publish(ros_image)
+        # rospy.loginfo("processed vehicle camera image and published to ROS for inference:")
+        
+        # # Inference function 
+        # starting inference
+        rospy.loginfo("starting inference")
+        if self.use_saved_model:
+            # print("running saved model")
+            inferred_image = thesavedfunc(cv_image, self.model, self.color_palette)
+            rospy.loginfo("saved Func inference")
+        else:
+            # print("running frozen func model")
+            inferred_image = thefrozenfunc(cv_image, self.model, self.color_palette)
+            rospy.loginfo("frozen Func inference")
 
-            # starting inference
-            rospy.loginfo("starting inference")
-            if self.use_saved_model:
-                inferred_image = thesavedfunc(cv_image,self.model_path,self.xml_path)
-                rospy.loginfo("saved Func inference")
-            else:
-                inferred_image = thefrozenfunc(cv_image,self.model_path,self.xml_path)
-                rospy.loginfo("frozen Func inference")
+        rospy.loginfo("inference completed")
+        
+        #inferred_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+        #inferred_image = thesavedfunc(cv_image) # To infer from models in saved model format
+        # inferred_image = thefrozenfunc(cv_image) # To infer from models in frozen graph state
 
-            rospy.loginfo("inference completed")
-            
-            #inferred_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
-            #inferred_image = thesavedfunc(cv_image) # To infer from models in saved model format
-            # inferred_image = thefrozenfunc(cv_image) # To infer from models in frozen graph state
-
-            # Publishing infered image through MQTT Topic
-            __,jpeg = cv2.imencode('.jpg',inferred_image)
-            self.mqtt_client.publish(MQTT_PUB_SEGMENTED_TOPIC, jpeg.tobytes())
-            rospy.loginfo("img published to broker at topic %s",MQTT_PUB_SEGMENTED_TOPIC)
+        # Publishing infered image through MQTT Topic
+        __,jpeg = cv2.imencode('.jpg',inferred_image)
+        self.mqtt_pub_client.publish(MQTT_PUB_SEGMENTED_TOPIC, jpeg.tobytes())
+        rospy.loginfo("img published to broker at topic %s",MQTT_PUB_SEGMENTED_TOPIC)
 
     def run(self):
         rospy.loginfo("starting cloud node")
@@ -137,10 +145,15 @@ if __name__ == '__main__':
                      Don't forget to use the corresponding model type for model_path. Will resort to DEFAULT if any error
                  """
     
-    parser.add_argument("-model_path", nargs='?', default='model/mobilenet_v3_small_968_608_os8.pb',help=model_help)
-    parser.add_argument("-xml_path", nargs='?', default='xml/convert.xml',help=xml_help)
-    parser.add_argument("--use_saved_model", action="store_true", help=graph_help)
-    args = parser.parse_args()
+    parser.add_argument("-m","--model_path", default='model/mobilenet_v3_small_968_608_os8.pb',help=model_help)
+    parser.add_argument("-x","--xml_path", default='xml/convert.xml',help=xml_help)
+    parser.add_argument("-s","--use_saved_model", action="store_true", help=graph_help)
+
+    args = parser.parse_args(ros_args[1:])
+    print("Model Path: ", args.model_path)
+    print("XML Path: ", args.xml_path)
+    # print("")
+
     if args.use_saved_model:
         if not os.path.isdir(args.model_path):
             print("Model is not a savedModel, switching to Default Saved Model here")

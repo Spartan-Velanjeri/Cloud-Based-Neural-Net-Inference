@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import cv2
 import time
+import rospy
 
 def wrap_frozen_graph(graph_def, inputs, outputs, print_graph=False):
     def _imports_graph_def():
@@ -90,7 +91,7 @@ def parse_convert_xml(conversion_file_path):
 
     return color_palette, class_names, color_to_label
 
-def model_initialiser(model_path,xml_path,use_saved_model):
+def model_initialiser(model_path, xml_path, use_saved_model):
     if use_saved_model:
         if model_path == None:
             model_path='model/mobilenetv3_large_os8_deeplabv3plus_72miou'
@@ -103,7 +104,7 @@ def model_initialiser(model_path,xml_path,use_saved_model):
     color_palette,__,__ = parse_convert_xml(xml_path)
     return model,color_palette
 
-def thefrozenfunc(input_img,model,color_palette):
+def thefrozenfunc(input_img, model, color_palette):
     start = time.time()
 
     width = 968 # Frozen model's input is 968*608
@@ -123,13 +124,17 @@ def thefrozenfunc(input_img,model,color_palette):
     prediction = cv2.cvtColor(prediction, cv2.COLOR_BGR2RGB)
     end = time.time()
 
-    print("Entire time",end-start)
-    print("Prediction time",prediction_end-prediction_start)
-    print("Postprocessing",end-prediction_end)
+    # print("Entire time: %s", end - start)
+    # print("Prediction time: %s", prediction_end - prediction_start)
+    # print("Postprocessing: %s", end - prediction_end)
+
+    rospy.loginfo("Entire time: %s", end - start)
+    rospy.loginfo("Prediction time: %s", prediction_end - prediction_start)
+    rospy.loginfo("Postprocessing: %s", end - prediction_end)
 
     return prediction
 
-def thesavedfunc(input_img,model,color_palette):
+def thesavedfunc(input_img, model, color_palette):
     # Reads from savedModel
 
     start = time.time()
@@ -139,10 +144,10 @@ def thesavedfunc(input_img,model,color_palette):
     #input_img = cv2.imread(image)
     #input_img = cv2.cvtColor(input_img,cv2.COLOR_BGR2RGB)
     preprocess_start = time.time()
-    input_img = resize_image(input_img,[height,width])
+    input_img = resize_image(input_img, [height, width])
     input_img = input_img / 255.0 #normalisation
-    input_img = np.expand_dims(input_img,axis=0)
-    input_img = tf.cast(input_img,dtype=tf.float32)
+    input_img = np.expand_dims(input_img, axis=0)
+    input_img = tf.cast(input_img, dtype=tf.float32)
 
     prediction_start = time.time()
     predictions = model(input_img)
@@ -150,22 +155,28 @@ def thesavedfunc(input_img,model,color_palette):
 
     prediction = tf.squeeze(predictions).numpy()
     argmax_prediction = np.argmax(prediction, axis=2)
-    prediction = segmentation_map_to_rgb(argmax_prediction,color_palette).astype(np.uint8)
+    prediction = segmentation_map_to_rgb(argmax_prediction, color_palette).astype(np.uint8)
     prediction = cv2.cvtColor(prediction, cv2.COLOR_BGR2RGB)
     end = time.time()
 
-    print("Entire time",end-start)
-    print("Prediction time",prediction_end-prediction_start)
-    print("Preprocessing step",prediction_start-preprocess_start)
-    print("Postprocessing",end-prediction_end)
+    # print("Entire time", end - start)
+    # print("Prediction time", prediction_end - prediction_start)
+    # print("Preprocessing step", prediction_start - preprocess_start)
+    # print("Postprocessing", end - prediction_end)
+
+    rospy.loginfo("Entire time: %s", end - start)
+    rospy.loginfo("Prediction time: %s", prediction_end - prediction_start)
+    rospy.loginfo("Preprocessing step: %s", prediction_start - preprocess_start)
+    rospy.loginfo("Postprocessing: %s", end - prediction_end)
+
     return prediction
 # Setup 
 
-if __name__ == "__main__":
-    path_image = 'data/image.png'
-    model, color_palette = model_initialiser('model/best_weights_e=00231_val_loss=0.1518','xml/cityscapes.xml',use_saved_model=True)
-    image = cv2.imread(path_image)
-    prediction = thesavedfunc(image,model,color_palette)
-    #prediction = thefrozenfunc(image,model,color_palette)
-    #cv2.imshow('prediction',prediction)
-    #cv2.waitKey(0)
+# if __name__ == "__main__":
+#     path_image = 'data/image.png'
+#     model, color_palette = model_initialiser('model/best_weights_e=00231_val_loss=0.1518','xml/cityscapes.xml',use_saved_model=True)
+#     image = cv2.imread(path_image)
+#     prediction = thesavedfunc(image,model,color_palette)
+#     #prediction = thefrozenfunc(image,model,color_palette)
+#     #cv2.imshow('prediction',prediction)
+#     #cv2.waitKey(0)
