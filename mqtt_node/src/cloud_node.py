@@ -10,7 +10,7 @@ import cv2
 import argparse
 import os
 import sys
-import time
+
 import matplotlib as plt
 
 # for running the models
@@ -20,6 +20,10 @@ from frozen_graph_runner import thefrozenfunc, thesavedfunc, model_initialiser
 ros_args = rospy.myargv(argv=sys.argv)
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
+
+# to use CPU instead of GPU
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 
 # MQTT Broker
 MQTT_BROKER_IP = "localhost"
@@ -35,7 +39,6 @@ MQTT_SSL_CLIENT_CERT = MQTT_CERTS_DIR + "cert/client/client-cert.pem"
 MQTT_SSL_CLIENT_KEY = MQTT_CERTS_DIR + "cert/client/client-key.pem"
 MQTT_SSL_CLIENT_CSR =  MQTT_CERTS_DIR + "cert/client/client-csr.pem"
 MQTT_SSL_CLIENT_CA =  MQTT_CERTS_DIR + "cert/ca-cert.pem"
-
 
 # ROS
 ROS_PUB_CAMERA_TOPIC = "/cloud_ros_camera"
@@ -93,6 +96,8 @@ class CloudNode:
         
         self.mqtt_pub_client.loop_start()
         self.mqtt_sub_client.loop_start()
+
+        self.benchmarking = np.array()
 
     # def callback(self,data):
     #     try:
@@ -209,5 +214,3 @@ if __name__ == '__main__':
         cloud_node.run()
     except rospy.ROSInterruptException:
         pass
-
-

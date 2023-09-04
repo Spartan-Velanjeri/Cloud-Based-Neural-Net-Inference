@@ -6,7 +6,7 @@ import cv2
 import time
 import rospy
 
-benchmarking_table = np.array([])
+# benchmarking_table = np.array([])
 
 def wrap_frozen_graph(graph_def, inputs, outputs, print_graph=False):
     def _imports_graph_def():
@@ -137,7 +137,7 @@ def thefrozenfunc(input_img, model, color_palette):
     postprocess_step = end - prediction_end
 
 
-    benchmarking_table.append(np.array([total_time, prediction_time, preprocess_step, postprocess_step]))
+    # benchmarking_table.append(np.array([total_time, prediction_time, preprocess_step, postprocess_step]))
 
     rospy.loginfo("Entire time: %s", total_time)
     rospy.loginfo("Prediction time: %s", prediction_time)
@@ -183,7 +183,7 @@ def thesavedfunc(input_img, model, color_palette):
     preprocess_step = prediction_start - preprocess_start
     postprocess_step = end - prediction_end
 
-    benchmarking_table.append(np.array([total_time, prediction_time, preprocess_step, postprocess_step]))
+    # benchmarking_table.append(np.array([total_time, prediction_time, preprocess_step, postprocess_step]))
 
     rospy.loginfo("Entire time: %s", total_time)
     rospy.loginfo("Prediction time: %s", prediction_time)
