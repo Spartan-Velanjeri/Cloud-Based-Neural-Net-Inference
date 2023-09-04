@@ -6,6 +6,8 @@ import cv2
 import time
 import rospy
 
+benchmarking_table = np.array([])
+
 def wrap_frozen_graph(graph_def, inputs, outputs, print_graph=False):
     def _imports_graph_def():
         tf.compat.v1.import_graph_def(graph_def, name="")
@@ -105,70 +107,92 @@ def model_initialiser(model_path, xml_path, use_saved_model):
     return model,color_palette
 
 def thefrozenfunc(input_img, model, color_palette):
-    start = time.time()
+    start = time.perf_counter()
 
     width = 968 # Frozen model's input is 968*608
     height = 608
 
+    preprocess_start = time.perf_counter()
     input_img = resize_image(input_img,[height,width])
     #input_img = input_img / 255.0 #normalisation not required for frozen graphs
     input_img = input_img[None]
 
 
-    prediction_start = time.time()
+    prediction_start = time.perf_counter()
     predictions = model(tf.cast(input_img,tf.uint8))
-    prediction_end = time.time()
+    prediction_end = time.perf_counter()
 
     prediction = tf.squeeze(predictions).numpy()
     prediction = segmentation_map_to_rgb(prediction,color_palette).astype(np.uint8)
     prediction = cv2.cvtColor(prediction, cv2.COLOR_BGR2RGB)
-    end = time.time()
+    end = time.perf_counter()
 
     # print("Entire time: %s", end - start)
     # print("Prediction time: %s", prediction_end - prediction_start)
     # print("Postprocessing: %s", end - prediction_end)
 
-    rospy.loginfo("Entire time: %s", end - start)
-    rospy.loginfo("Prediction time: %s", prediction_end - prediction_start)
-    rospy.loginfo("Postprocessing: %s", end - prediction_end)
+    total_time = end - start
+    prediction_time = prediction_end - prediction_start
+    preprocess_step = prediction_start - preprocess_start
+    postprocess_step = end - prediction_end
+
+
+    benchmarking_table.append(np.array([total_time, prediction_time, preprocess_step, postprocess_step]))
+
+    rospy.loginfo("Entire time: %s", total_time)
+    rospy.loginfo("Prediction time: %s", prediction_time)
+    rospy.loginfo("Preprocessing step: %s", preprocess_step)
+    rospy.loginfo("Postprocessing: %s", postprocess_step)
+
+    # rospy.loginfo("average_total_time: %s", np.mean(benchmarking_table, axis=0)[0])
 
     return prediction
 
 def thesavedfunc(input_img, model, color_palette):
     # Reads from savedModel
 
-    start = time.time()
+    start = time.perf_counter()
     width = 2048 # Saved model's input is 2048*1024
     height = 1024
 
     #input_img = cv2.imread(image)
     #input_img = cv2.cvtColor(input_img,cv2.COLOR_BGR2RGB)
-    preprocess_start = time.time()
+    preprocess_start = time.perf_counter()
     input_img = resize_image(input_img, [height, width])
     input_img = input_img / 255.0 #normalisation
     input_img = np.expand_dims(input_img, axis=0)
     input_img = tf.cast(input_img, dtype=tf.float32)
 
-    prediction_start = time.time()
+    prediction_start = time.perf_counter()
     predictions = model(input_img)
-    prediction_end = time.time()
+    prediction_end = time.perf_counter()
 
     prediction = tf.squeeze(predictions).numpy()
     argmax_prediction = np.argmax(prediction, axis=2)
     prediction = segmentation_map_to_rgb(argmax_prediction, color_palette).astype(np.uint8)
     prediction = cv2.cvtColor(prediction, cv2.COLOR_BGR2RGB)
-    end = time.time()
+    end = time.perf_counter()
 
     # print("Entire time", end - start)
     # print("Prediction time", prediction_end - prediction_start)
     # print("Preprocessing step", prediction_start - preprocess_start)
     # print("Postprocessing", end - prediction_end)
 
-    rospy.loginfo("Entire time: %s", end - start)
-    rospy.loginfo("Prediction time: %s", prediction_end - prediction_start)
-    rospy.loginfo("Preprocessing step: %s", prediction_start - preprocess_start)
-    rospy.loginfo("Postprocessing: %s", end - prediction_end)
+    total_time = end - start
+    prediction_time = prediction_end - prediction_start
+    preprocess_step = prediction_start - preprocess_start
+    postprocess_step = end - prediction_end
 
+    benchmarking_table.append(np.array([total_time, prediction_time, preprocess_step, postprocess_step]))
+
+    rospy.loginfo("Entire time: %s", total_time)
+    rospy.loginfo("Prediction time: %s", prediction_time)
+    rospy.loginfo("Preprocessing step: %s", preprocess_step)
+    rospy.loginfo("Postprocessing: %s", postprocess_step)
+
+    # rospy.loginfo("average_total_time: %s", np.mean(benchmarking_table, axis=0)[0])
+
+    
     return prediction
 # Setup 
 

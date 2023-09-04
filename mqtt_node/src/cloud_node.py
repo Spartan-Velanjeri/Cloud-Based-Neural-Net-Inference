@@ -10,7 +10,7 @@ import cv2
 import argparse
 import os
 import sys
-
+import time
 import matplotlib as plt
 
 # for running the models
@@ -24,8 +24,18 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
 # MQTT Broker
 MQTT_BROKER_IP = "localhost"
 MQTT_BROKER_PORT = 1883
+MQTT_SSL_BROKER_PORT = 8883
+
 MQTT_SUB_CAMERA_TOPIC = "/vehicle_camera"
 MQTT_PUB_SEGMENTED_TOPIC = "/segmented_images"
+
+MQTT_CERTS_DIR = "/home/rosuser/ws/ws_mqtt_nodes/cloud_node/src/mqtt_node/src/"
+
+MQTT_SSL_CLIENT_CERT = MQTT_CERTS_DIR + "cert/client/client-cert.pem"
+MQTT_SSL_CLIENT_KEY = MQTT_CERTS_DIR + "cert/client/client-key.pem"
+MQTT_SSL_CLIENT_CSR =  MQTT_CERTS_DIR + "cert/client/client-csr.pem"
+MQTT_SSL_CLIENT_CA =  MQTT_CERTS_DIR + "cert/ca-cert.pem"
+
 
 # ROS
 ROS_PUB_CAMERA_TOPIC = "/cloud_ros_camera"
@@ -34,6 +44,8 @@ ROS_PUB_CAMERA_TOPIC = "/cloud_ros_camera"
 class CloudNode:
     def __init__(self,model, color_palette,use_saved_model):
         self.bridge = CvBridge()
+        self.ssl_enabled = True
+
         
         # Model Initialisation
         self.model = model
@@ -44,8 +56,31 @@ class CloudNode:
         #setup MQTT Client
         self.mqtt_pub_client = mqtt.Client() # Publish segmented images to vehicle node
         self.mqtt_sub_client = mqtt.Client() # Subscribe camera images from vehicle node
-        self.mqtt_pub_client.connect(MQTT_BROKER_IP,MQTT_BROKER_PORT,61) #same client as the segmented image subscribing on vehicle node
-        self.mqtt_sub_client.connect(MQTT_BROKER_IP,MQTT_BROKER_PORT,60) #same client as the camera image publishing on vehicle node
+
+
+        if self.ssl_enabled:
+
+            self.mqtt_pub_client.tls_set(
+                certfile=MQTT_SSL_CLIENT_CERT,
+                keyfile=MQTT_SSL_CLIENT_KEY,
+                ca_certs=MQTT_SSL_CLIENT_CA)
+
+            self.mqtt_sub_client.tls_set(
+                certfile=MQTT_SSL_CLIENT_CERT,
+                keyfile=MQTT_SSL_CLIENT_KEY,
+                ca_certs=MQTT_SSL_CLIENT_CA)
+
+
+            self.mqtt_pub_client.connect(MQTT_BROKER_IP, MQTT_SSL_BROKER_PORT, 60)
+            self.mqtt_sub_client.connect(MQTT_BROKER_IP, MQTT_SSL_BROKER_PORT, 61)
+        else:
+            self.mqtt_pub_client.connect(MQTT_BROKER_IP, MQTT_BROKER_PORT, 60)
+            self.mqtt_sub_client.connect(MQTT_BROKER_IP, MQTT_BROKER_PORT, 61)
+
+
+
+        # self.mqtt_pub_client.connect(MQTT_BROKER_IP,MQTT_BROKER_PORT,61) #same client as the segmented image subscribing on vehicle node
+        # self.mqtt_sub_client.connect(MQTT_BROKER_IP,MQTT_BROKER_PORT,60) #same client as the camera image publishing on vehicle node
         self.mqtt_sub_client.on_message = self.on_mqtt_message
 
         # List to vehicle's camera (ROS SUB)

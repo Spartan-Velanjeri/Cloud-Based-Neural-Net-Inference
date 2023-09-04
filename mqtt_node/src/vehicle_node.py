@@ -15,6 +15,20 @@ import time
 # MQTT Broker
 MQTT_BROKER_IP = "localhost"
 MQTT_BROKER_PORT = 1883
+MQTT_SSL_BROKER_PORT = 8883
+
+MQTT_CERTS_DIR = "/home/rosuser/ws/ws_mqtt_nodes/vehicle_node/src/mqtt_node/src/"
+
+MQTT_SSL_CLIENT_CERT = MQTT_CERTS_DIR + "cert/client/client-cert.pem"
+MQTT_SSL_CLIENT_KEY = MQTT_CERTS_DIR + "cert/client/client-key.pem"
+MQTT_SSL_CLIENT_CSR =  MQTT_CERTS_DIR + "cert/client/client-csr.pem"
+MQTT_SSL_CLIENT_CA =  MQTT_CERTS_DIR + "cert/ca-cert.pem"
+# # testing/vehicle-cloud-inference/mqtt_node/src/cert/client/client-cert.pem
+# MQTT_SSL_CLIENT_CERT = "cert/client/client-cert.pem"
+# MQTT_SSL_CLIENT_KEY = "cert/client/client-key.pem"
+# MQTT_SSL_CLIENT_CSR = "cert/client/client-csr.pem"
+
+
 MQTT_PUB_CAMERA_TOPIC = "/vehicle_camera"
 MQTT_SUB_SEGMENTED_TOPIC = "/segmented_images"
 
@@ -83,13 +97,30 @@ ROS_SUB_CAMERA_TOPIC = "/sensors/camera/left/image_raw"
 class VehicleNode:
     def __init__(self):
         self.bridge = CvBridge()
+        self.ssl_enabled = True
 
         #setup MQTT Client
         self.mqtt_pub_client = mqtt.Client() # To send vehicle data to the cloud node
         self.mqtt_sub_client = mqtt.Client() # To receive segmented images
 
-        self.mqtt_pub_client.connect(MQTT_BROKER_IP,MQTT_BROKER_PORT,60)
-        self.mqtt_sub_client.connect(MQTT_BROKER_IP,MQTT_BROKER_PORT,61)
+        if self.ssl_enabled:
+            self.mqtt_pub_client.tls_set(
+                certfile=MQTT_SSL_CLIENT_CERT,
+                keyfile=MQTT_SSL_CLIENT_KEY,
+                ca_certs=MQTT_SSL_CLIENT_CA)
+
+            self.mqtt_sub_client.tls_set(
+                certfile=MQTT_SSL_CLIENT_CERT,
+                keyfile=MQTT_SSL_CLIENT_KEY,
+                ca_certs=MQTT_SSL_CLIENT_CA)
+
+
+            self.mqtt_pub_client.connect(MQTT_BROKER_IP, MQTT_SSL_BROKER_PORT, 60)
+            self.mqtt_sub_client.connect(MQTT_BROKER_IP, MQTT_SSL_BROKER_PORT, 61)
+        else:
+            self.mqtt_pub_client.connect(MQTT_BROKER_IP, MQTT_BROKER_PORT, 60)
+            self.mqtt_sub_client.connect(MQTT_BROKER_IP, MQTT_BROKER_PORT, 61)
+
         self.mqtt_sub_client.on_message = self.on_mqtt_message #Does the callback job for the subscription of the segmented images
 
         # List to vehicle's camera (ROS SUB)
@@ -110,6 +141,8 @@ class VehicleNode:
         self.ts_mqtt_segmented_img = time.perf_counter()
         self.ts_processed_segmented_img = time.perf_counter()
         self.ts_ros_pub_segmented_img = time.perf_counter()
+
+        self.benchmarking_values = np.array([[]])
 
 
     def callback(self, data):

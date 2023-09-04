@@ -2,7 +2,7 @@
 bag/left_camera_templergraben.bag
 docker/Dockerfile
 ws_mqtt_nodes/
-
+mqtt_node/src/cert
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
