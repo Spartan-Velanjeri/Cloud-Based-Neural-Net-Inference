@@ -93,19 +93,22 @@ def predict_rest(json_data, url,color_palette):
     Example Usage:
     - prediction = predict_rest(json_input, "http://example.com/model_endpoint", color_palette)
     """
-
+    prediction_start = time.time()
     json_response = requests.post(url, data=json_data)
     response = json.loads(json_response.text)
+    prediction_end = time.time()
+    prediction_time = time.time()-prediction_start
     #print(response)
     predictions = np.array(response["predictions"])
-    print(predictions.shape)
+    #print(predictions.shape)
     # prediction = tf.squeeze(predictions).numpy()
     prediction = np.squeeze(predictions).tolist()  # Convert to list
     argmax_prediction = np.argmax(prediction, axis=2)
     prediction = segmentation_map_to_rgb(argmax_prediction,color_palette=color_palette).astype(np.uint8)
+    postprocessing_time = time.time() - prediction_end
     #prediction = cv2.cvtColor(prediction,cv2.COLOR_BGR2RGB)
 
-    return prediction
+    return prediction, prediction_time,postprocessing_time
 
 def predict_grpc(data, input_name, stub,color_palette):
     """
@@ -125,6 +128,7 @@ def predict_grpc(data, input_name, stub,color_palette):
     It assumes the server is hosting a semantic segmentation model.
     The function processes the gRPC response, converts it to an image format, and applies color mapping using the provided color_palette.
     """
+    grpc_request_preprocess = time.time()
 
     # Create a gRPC request made for prediction
     request = predict_pb2.PredictRequest()
@@ -139,9 +143,12 @@ def predict_grpc(data, input_name, stub,color_palette):
     # Set the input as the data
     # tf.make_tensor_proto turns a TensorFlow tensor into a Protobuf tensor
     request.inputs[input_name].CopyFrom(tf.make_tensor_proto(data.tolist()))
-
+    preprocess_end = time.time()
+    preprocessing_time = preprocess_end - grpc_request_preprocess
     # Send the gRPC request to the TF Server
     result = stub.Predict(request)
+    prediction_end = time.time()
+    prediction_time = prediction_end-preprocess_end
     # Process the gRPC response
     output_name = list(result.outputs.keys())[0]
     output_data = result.outputs[output_name].float_val  # Assuming the output is in float format
@@ -161,7 +168,8 @@ def predict_grpc(data, input_name, stub,color_palette):
     prediction = segmentation_map_to_rgb(argmax_prediction, color_palette=color_palette).astype(np.uint8)
     prediction = np.squeeze(prediction)
     # print(prediction.shape)
-    return prediction
+    postprocessing_time = time.time() - prediction_end
+    return prediction, preprocessing_time,prediction_time,postprocessing_time
 
 def humansize(nbytes):
     """
@@ -185,7 +193,7 @@ def humansize(nbytes):
     f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
     return '%s %s' % (f, suffixes[i])
 
-def bag_reader(bag_file,flag):
+def bag_reader(bag_file,flag,color_palette):
 
     '''
     Reads frames from a ROSBag file and processes them using OpenCV and TensorFlow Serving based on the specified flag.
@@ -196,14 +204,14 @@ def bag_reader(bag_file,flag):
     '''
 
     while True: # Useful to loop the ROSBag as there ain't existing built-in func
-        total_list, prediction_list = [],[]
-        avg_total = 0
-        avg_prediction = 0
+        image_retrieve_list, image_preprocess_list, request_preprocess_list, prediction_list,postprocessing_list = []
+
         with Reader(bag_file) as reader:
         # Iterate over messages
             for connection, timestamp, rawdata in reader.messages():
                 if connection.topic == '/sensors/camera/left/image_raw':
                     # Assuming 'sensor_msgs/Image' message type
+                    image_retrieval_start = time.time()
                     msg = deserialize_cdr(ros1_to_cdr(rawdata, connection.msgtype), connection.msgtype)
                     
                     # Convert ROS image data to OpenCV image
@@ -217,20 +225,40 @@ def bag_reader(bag_file,flag):
                     reshaped_array = ((reshaped_array - reshaped_array.min()) / (reshaped_array.max() - reshaped_array.min()) * 255).astype(np.uint8)
                     demosaiced_image = cv2.cvtColor(reshaped_array, cv2.COLOR_BAYER_RG2BGR) # Required to convert BAYER format to BGR
                     rgb_image = cv2.cvtColor(demosaiced_image, cv2.COLOR_BGR2RGB) #BGR to RGB
-                    total,prediction = serving_func(rgb_image,flag)
-                    total_list.append(total)
-                    prediction_list.append(prediction)
+                    image_retrieval_end = time.time()
+                    image_retrieve = image_retrieval_end - image_retrieval_start # Time it takes for one frame from the ROSBag
+                    
+                    image_preprocess,request_preprocess,prediction_time,postprocessing_time = serving_func(rgb_image,flag,color_palette)
+                    
+                    image_retrieve_list.append(image_retrieve)
+                    image_preprocess_list.append(image_preprocess)
+                    request_preprocess_list.append(request_preprocess)
+                    prediction_list.append(prediction_time)
+                    postprocessing_list.append(postprocessing_time)
+
                     #print(len(total_list))
-                    if (len(total_list)>5):
-                        total_list.pop(0)
+                    if (len(prediction_list)>5):
+                        image_retrieve_list.pop(0)
+                        image_preprocess_list.pop(0)
+                        request_preprocess_list.pop(0)
                         prediction_list.pop(0)
-                        avg_total = sum(total_list)/len(total_list)
-                        avg_prediction = sum(prediction_list)/len(prediction_list)
-                        print("Average Total Time: ",avg_total,"Average Prediction Time: ",avg_prediction)
+                        postprocessing_list.pop(0)
+                        number = len(image_retrieve_list)
+                        avg_image_retrieve = sum(image_retrieve_list)/number
+                        avg_image_preprocess = sum(image_preprocess_list)/number
+                        avg_request_preprocess = sum(request_preprocess_list)/number
+                        avg_prediction = sum(prediction_list)/number
+                        avg_postprocess = sum(postprocessing_list)/number
+                        
+                        print("Average Image Retrieval: ",avg_image_retrieve,"Average Image Preprocessing: ",avg_image_preprocess)
+                        print("\n")
+                        print("Average Request Preprocessing: ",avg_request_preprocess,"Average Prediction Time: ",avg_prediction)
+                        print("\n")
+                        print("Average Postprocessing Time: ",avg_postprocess)
                         break
                     
                     
-def serving_func(input_img,flag):
+def serving_func(input_img,flag,color_palette):
     '''
     Processes an input image using gRPC or a REST API based on the specified flag and performs various measurements.
 
@@ -238,7 +266,7 @@ def serving_func(input_img,flag):
         input_img (numpy.ndarray): The input image for inference.
         flag (str): A flag indicating whether to use gRPC ('grpc') or a REST API ('rest') for inference.
     '''
-    start = time.time()
+    #start = time.time()
 
     #st = speedtest.Speedtest()
 
@@ -253,17 +281,18 @@ def serving_func(input_img,flag):
     #ping = (st.results.ping)  
 
 
-    internet_complete = time.time()
+    #internet_complete = time.time()
 
-    path_to_xml = 'cityscapes.xml'
+    # path_to_xml = 'cityscapes.xml'
 
-    #path_to_xml = 'convert.xml'
-    color_palette, class_names, color_to_label = parse_convert_xml(path_to_xml)
+    # #path_to_xml = 'convert.xml'
+    # color_palette, class_names, color_to_label = parse_convert_xml(path_to_xml)
 
     width = 2048
     height = 1024
 
     # input_img = cv2.imread('image.png')
+    preprocess_start = time.time()
     input_img = resize_image(input_img,[height,width])
     input_img = input_img / 255.0
 
@@ -273,9 +302,9 @@ def serving_func(input_img,flag):
     batched_img = batched_img.astype(float)
     #batched_img = batched_img.astype(np.uint8)
     print(f"Batched image shape: {batched_img.shape}")
-    preprocess_time = time.time()
-
-    rest_dump = "None"
+    preprocess_end = time.time()
+    image_preprocess = preprocess_end-preprocess_start
+    REST_request_preprocess = "None"
 
     if flag == 'rest':
         ### Serving part 
@@ -297,31 +326,23 @@ def serving_func(input_img,flag):
 
 
     print("Now using the serving \n")
-    pred_start = time.time()
+    #pred_start = time.time()
     if flag == 'rest':
-        prediction = predict_rest(data, url,color_palette)
-        rest_dump = rest_end-rest_start
+        prediction,prediction_time,postprocessing_time = predict_rest(data, url,color_palette)
+        request_preprocess = rest_end-rest_start
     else:
-        prediction = predict_grpc(batched_img,input_name=input_name,stub=stub,color_palette=color_palette)
+        prediction,request_preprocess,prediction_time,postprocessing_time = predict_grpc(batched_img,input_name=input_name,stub=stub,color_palette=color_palette)
     prediction = cv2.cvtColor(prediction,cv2.COLOR_BGR2RGB)
-    pred_end = time.time()
 
     print(f"REST output shape: {prediction.shape}")
-    end = time.time()
-    total_time = end-start
-    prediction_time = pred_end - pred_start
-    
-    print("total time",total_time)
-    print("Preprocessing time", preprocess_time-start)
-    print("Prediction time", prediction_time)
+    return image_preprocess,request_preprocess,prediction_time,postprocessing_time
     #print("Internet Stats Calc Time", internet_complete-start)
     #print("Ping:",ping)
     #print("Download Speed",ds)
     #print("Upload Speed",us)
 
     # cv2.imshow('prediction',prediction)
-    # cv2.waitKey(1)
-    return total_time, prediction_time
+    # cv2.waitKey(1) 
 #print(f"Predicted class: {postprocess(rest_outputs)}")
 
 
@@ -351,6 +372,10 @@ if __name__ == "__main__":
         print("Running REST API mode")
 
     # Bag file 
-    bag_reader(bag_file=args.bag,flag=args.trigger)
+    path_to_xml = 'cityscapes.xml'
+
+    #path_to_xml = 'convert.xml'
+    color_palette, class_names, color_to_label = parse_convert_xml(path_to_xml)
+    bag_reader(bag_file=args.bag,flag=args.trigger,color_palette=color_palette)
     
 
