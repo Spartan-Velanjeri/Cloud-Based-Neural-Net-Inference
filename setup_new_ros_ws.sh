@@ -23,10 +23,10 @@ echo "folder: $WS_PATH"
 ls -l $WS_PATH
 
 echo "copying bag file to vehicle node workspace"
-cp bag/left_camera_templergraben.bag $WS_VEHICLE/src/mqtt_node/src/bag
+cp bag/left_camera_templergraben.bag $WS_VEHICLE/src/mqtt_node/src/bag/
 # cd $WS_PATH && echo "moved to ros ws folder '${PWD}'. running catkin_make ..."
 
-source /opt/ros/noetic/setup.bash
+# source /opt/ros/noetic/setup.bash
 
 # catkin_make
 
